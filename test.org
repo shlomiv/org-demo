@@ -1,0 +1,70 @@
+#+Title: Presentation using org-demo
+#+Author: Shlomi Vaknin
+
+* Org-demo
+  How cool, ah?
+  #+BEGIN_SRC emacs-lisp :control enter :results none
+    (org-demo-start)
+    (org-demo-title-page 8)
+  #+END_SRC
+
+  #+BEGIN_SRC emacs-lisp :control cleanup :results none
+    (org-demo-start-presenting 5)
+  #+END_SRC
+
+  #+BEGIN_SRC elisp :control flow :results none
+  #+END_SRC
+
+
+* _Slide 1_
+  #+BEGIN_SRC emacs-lisp :control enter :results none
+    (embed-org-latex)
+    (init-stepper steps)
+  #+END_SRC
+
+  #+BEGIN_SRC emacs-lisp :control flow :results none
+      (end-of-heading)
+      (reveal-steps steps)
+  #+END_SRC
+
+  #+BEGIN_SRC emacs-lisp :control cleanup :results none
+    (cleanup-steps steps)
+  #+END_SRC
+
+  Press any key to see the bullets
+    + Like this one
+      + :tw: Press C-> to move to next slide when bullets are finished
+
+
+
+
+* _Slide 2_
+
+  #+BEGIN_SRC emacs-lisp :control enter :results none
+    (embed-org-latex)
+    (init-stepper steps)
+  #+END_SRC
+
+  #+BEGIN_SRC emacs-lisp :control cleanup :results none
+    (cleanup-steps steps)
+  #+END_SRC
+
+  $3+4=7$
+
+  #+BEGIN_SRC elisp :control flow :results none
+    (end-of-heading)
+    (reveal-steps steps)
+  #+END_SRC
+
+   + Tell me something
+     + DO you
+     + :tw: Or do you NOT?
+
+* Thank you!
+  #+BEGIN_SRC elisp :control flow :results none
+    (end-of-heading)
+  #+END_SRC
+
+  #+BEGIN_SRC elisp :control cleanup :results none
+    (org-demo-finish)
+  #+END_SRC
