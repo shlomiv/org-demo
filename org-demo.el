@@ -1,7 +1,6 @@
 (require 'org-element)
 ;;(require 'org-tree-slide)
 
-
 (defvar org-demo--original-buffer)
 (defvar org-demo--presentation-buffer)
 (defvar org-demo--window-configuration)
@@ -15,6 +14,8 @@
   (org-tree-slide-mode))
 
 (defun org-demo-start ()
+
+  (set-face-attribute 'org-table nil :inherit 'fixed-pitch :height .9 :width 'normal :scale 6)
   (setq org-tree-slide-breadcrumbs nil)
   (fringe-mode '(0 . 0))
   (setq cursor-type nil)
@@ -58,20 +59,26 @@
 (defun get-active-steps ()
   (reverse (find-overlays-specifying :step-type)))
 
-(defun org-demo-block()
-  (setq ks (read-key-sequence ""))
-  (cond
-   ((and (stringp ks) (string= ks "q"))
-    (progn (cleanup-steps)
-           (throw :terminate 'org-demo-finish)))
-   ((eq (key-binding ks) 'org-tree-slide-move-next-tree)
-    (progn (cleanup-steps)
-           (throw :terminate 'org-tree-slide-move-next-tree)))
-   ((eq (key-binding ks) 'org-tree-slide-move-previous-tree)
-    (progn (cleanup-steps)
-           (throw :terminate 'org-tree-slide-move-previous-tree)))
+(defmacro org-demo-with-current-window (&rest body)
+  `(let ((b (current-buffer)))
+     ,@body
+    (select-window (get-buffer-window b))))
 
-   ))
+(defun org-demo-block()
+  (org-demo-with-current-window
+   (select-window (get-buffer-window org-demo--presentation-buffer))
+   (setq ks (read-key-sequence ""))
+   (cond
+    ((and (stringp ks) (string= ks "q"))
+     (progn (cleanup-steps)
+            (throw :terminate 'org-demo-finish)))
+    ((eq (key-binding ks) 'org-tree-slide-move-next-tree)
+     (progn (cleanup-steps)
+            (throw :terminate 'org-tree-slide-move-next-tree)))
+    ((eq (key-binding ks) 'org-tree-slide-move-previous-tree)
+     (progn (cleanup-steps)
+            (throw :terminate 'org-tree-slide-move-previous-tree)))
+    )))
 
 (defun org-demo-title-page (&optional SIZE)
   (text-scale-set (or SIZE 5))
@@ -90,7 +97,7 @@
 
   (defun update-org-latex-fragment-scale ()
     (let ((text-scale-factor (expt text-scale-mode-step text-scale-mode-amount)))
-      (plist-put org-format-latex-options :scale (* 1.3 text-scale-factor))))
+      (plist-put org-format-latex-options :scale (* 1.5 text-scale-factor))))
 
   (add-hook 'text-scale-mode-hook 'update-org-latex-fragment-scale)
   (add-hook 'org-mode-hook 'org-preview-latex-fragment)
@@ -121,26 +128,32 @@ meaning without the children.."
                  (eq cur-outline-level (save-match-data (org-outline-level))))
             (let ((elem (org-element-at-point)))
               (when (string-prefix-p "+" (org-element-property :bullet elem))
-                (let ((ol (make-overlay (org-element-property :begin elem)
-                                        (org-tree-get-element-text-end elem))))
-                  (cond
-                   ((looking-at "[[:space:]]*:tw[[:space:]]*\\([[:digit:].]*\\):")
-                    (let ((c (current-column)))
-                      (overlay-put ol :step-type 'typewriter)
-                      (overlay-put ol :step-col  (- c 1))
-                      (overlay-put ol :step-delay     (if (eq (match-beginning 1) (match-end 1))
-                                                          0.01
-                                                          (string-to-number
-                                                           (buffer-substring (match-beginning 1) (match-end 1)))))
-                      (overlay-put ol :step-text      (buffer-substring (+ (org-element-property :contents-begin elem)
-                                                                           (- (match-end 0) (match-beginning 0)))
-                                                                        (- (org-tree-get-element-text-end elem) 1))))
-                    (add-to-list 'steps ol))
+                (cond
+                 ((looking-at "[[:space:]]*:tw[[:space:]]*\\([[:digit:].]*\\):")
+                  (let ((ol (make-overlay (org-element-property :begin elem)
+                                          (org-element-property :end elem)
+                                          ;;(org-tree-get-element-text-end elem)
+                                          ))
+                        (c (current-column)))
+                    (overlay-put ol :step-type 'typewriter)
+                    (overlay-put ol :step-col  (- c 1))
+                    (overlay-put ol :step-delay     (if (eq (match-beginning 1) (match-end 1))
+                                                        0.01
+                                                      (string-to-number
+                                                       (buffer-substring (match-beginning 1) (match-end 1)))))
+                    (overlay-put ol :step-text      (buffer-substring (+ (org-element-property :contents-begin elem)
+                                                                         (- (match-end 0) (match-beginning 0)))
+                                                                      (- (org-tree-get-element-text-end elem) 1)))
+                    (add-to-list 'steps ol)))
 
-                   ('t (progn (overlay-put ol :step-type 'appear)
-                              (add-to-list 'steps ol)))
+                 ('t (let ((ol (make-overlay (org-element-property :begin elem)
+                                             (org-element-property :end elem)
+                                             ;;(org-tree-get-element-text-end elem)
+                                             )))
+                       (overlay-put ol :step-type 'appear)
+                       (add-to-list 'steps ol)))
 
-                   ))))
+                 )))
           (setq cont nil)))
 
 
@@ -176,14 +189,15 @@ meaning without the children.."
                (display-text (concat prefix step-text "\n"))
                (l (length step-text))
                (animation nil))
-          (message "animating")
+          ;;(message "animating")
           ;; speed optimization:
           ;; prepare all strings before displaying:
-          (dotimes (q l)
+          (dotimes (q (+ 1 l))
             (add-to-list 'animation (substring display-text 0 (+ prefix-len q 1))))
 
+          (overlay-put i 'invisible nil)
           (dolist (frame (reverse animation))
-            (message "   frame ")
+            ;;(message "   frame ")
             (overlay-put i 'display frame)
             (sit-for step-delay 't)
             )))))))
@@ -198,5 +212,11 @@ meaning without the children.."
     (while (< cur-outline-level (org-outline-level))
       (forward-line -1))
     (recenter -1)))
+
+(defun embed-org-latex (&optional size)
+  (when (not (org--list-latex-overlays))
+    (when size (plist-put org-format-latex-options :scale size))
+    (org-toggle-latex-fragment)))
+
 
 (provide 'org-demo)
