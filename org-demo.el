@@ -4,6 +4,29 @@
 (defvar org-demo--original-buffer)
 (defvar org-demo--presentation-buffer)
 (defvar org-demo--window-configuration)
+(defvar org-demo--dont-autostep nil
+  "non nil value inhibits auto stepping. In order to manually step
+include a call to (reveal-steps steps) in a ':control flow' block.
+note, 'steps' is defined in this context by init-stepper
+
+This should be set in an ':control enter' block using
+org-demo-dont-autostep-current-slide.
+
+e.g.:
+ #+BEGIN_SRC emacs-lisp :control flow :results none
+   (org-demo-dont-autostep-current-slide)
+ #+END_SRC
+
+ #+BEGIN_SRC emacs-lisp :control flow :results none
+   (org-demo-block)
+   (do-something)
+
+   (reveal-steps steps)
+
+   (org-demo-block)
+   (do-something-else)
+ #+END_SRC
+")
 
 (defun org-demo-showtime ()
   (interactive)
@@ -14,7 +37,6 @@
   (org-tree-slide-mode))
 
 (defun org-demo-start ()
-
   (set-face-attribute 'org-table nil :inherit 'fixed-pitch :height .9 :width 'normal)
   (setq org-tree-slide-breadcrumbs nil)
   (fringe-mode '(0 . 0))
@@ -126,7 +148,8 @@ meaning without the children.."
 This function prepares the slide by placing overlays at certain points
 "
   (save-excursion
-    (outline-back-to-heading)
+    ;;(outline-back-to-heading) ;; wierd "Before first heading" error
+    (goto-char (point-min))
     (forward-line)
     (let ((cur-outline-level (org-outline-level))
           (steps '())
@@ -236,5 +259,23 @@ This function prepares the slide by placing overlays at certain points
     (when size (plist-put org-format-latex-options :scale size))
     (org-toggle-latex-fragment)))
 
+
+(defun org-demo-dont-autostep-current-slide ()
+  (setq org-demo--dont-autostep 't))
+
+(setq org-tree-slide-on-slide-enter   nil)
+(setq org-tree-slide-on-slide-flow    nil)
+(setq org-tree-slide-on-slide-cleanup nil)
+(add-hook 'org-tree-slide-on-slide-enter  '(lambda()
+                                             (setq org-demo--dont-autostep nil)
+                                             (init-stepper  steps)
+                                             (end-of-heading)))
+(add-hook 'org-tree-slide-on-slide-flow   '(lambda()
+                                             (end-of-heading)
+                                             (when (not org-demo--dont-autostep)
+                                               (reveal-steps  steps))
+                                             ))
+(add-hook 'org-tree-slide-on-slide-cleanup'(lambda()
+                                             (cleanup-steps steps)))
 
 (provide 'org-demo)
