@@ -197,28 +197,24 @@ This function prepares the slide by placing overlays at certain points
   (dolist (i (or steps (get-active-steps)))
     (let ((type (overlay-get i :step-type)))
       (cond
-       ((eq type 'show-now)   (progn
-                                (overlay-put i 'invisible nil)))
        ((eq type 'appear)     (progn
                                 (org-demo-block)
                                 (overlay-put i 'invisible nil)))
        ((eq type 'typewriter)
-        (let* ((step-text (overlay-get i :step-text))
-               (step-col  (overlay-get i :step-col))
-               (step-delay (overlay-get i :step-delay))
-               (display-text (concat step-text "\n"))
-               (l (length step-text))
+        (let* ((step-delay (overlay-get i :step-delay))
+               (display-text (concat (overlay-get i :step-text) "\n"))
                (animation nil))
+
           (org-demo-block)
+
+          ;; speed optimization: prepare all strings before displaying:
+          (dotimes (q (length display-text))
+            (add-to-list 'animation (substring display-text 0 (+ q 1))))
 
           ;; Show the bullet
           (overlay-put (overlay-get i :bullet-ol) 'invisible nil)
 
-          ;; speed optimization:
-          ;; prepare all strings before displaying:
-          (dotimes (q (+ 1 l))
-            (add-to-list 'animation (substring display-text 0 (+ q 1))))
-
+          ;; do animation
           (overlay-put i 'invisible nil)
           (dolist (frame (reverse animation))
             (overlay-put i 'display frame)
