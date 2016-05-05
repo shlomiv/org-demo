@@ -30,13 +30,10 @@
   #+BEGIN_SRC emacs-lisp :control cleanup :results none
     (cleanup-steps steps)
   #+END_SRC
-
   Press any key to see the bullets
-    + Like this one
-      + :tw: Press C-> to move to next slide when bullets are finished
-
-
-
+    - :a: Like this one
+      1) :tw: Press C-> to move to next slide when bullets are finished
+      2) :a: Press C-> to move to next slide when bullets are finished
 
 * _Slide 2_
 
@@ -56,9 +53,11 @@
     (reveal-steps steps)
   #+END_SRC
 
-   + Tell me something
+   + :a: Tell me something
      + DO you
      + :tw: Or do you NOT?
+       + :c: your mama is so fat!
+
 
 * Thank you!
   #+BEGIN_SRC elisp :control flow :results none

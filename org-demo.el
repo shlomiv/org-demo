@@ -118,39 +118,71 @@ meaning without the children.."
 
 ;; stepper
 (defun prep-stepper ()
+  "a bullet could be reveals during steps. Here are currently supported revealing types:
+:c: - conceal, never show this bullet
+:a: - appear, show the bullet at once after a keypress
+:tw <float-number>: - type writer, animate char by char, waiting float-number seconds in between chars
+
+This function prepares the slide by placing overlays at certain points
+"
   (save-excursion
-    (goto-char (point-min))
+    (outline-back-to-heading)
+    (forward-line)
     (let ((cur-outline-level (org-outline-level))
           (steps '())
           (cont 't))
       (while cont
-        (if (and (re-search-forward " \\+" nil 't)
+        (if (and (re-search-forward org-list-full-item-re nil 't);;(re-search-forward " \\+" nil 't)
                  (eq cur-outline-level (save-match-data (org-outline-level))))
             (let ((elem (org-element-at-point)))
-              (when (string-prefix-p "+" (org-element-property :bullet elem))
-                (cond
-                 ((looking-at "[[:space:]]*:tw[[:space:]]*\\([[:digit:].]*\\)[[:space:]]*:")
-                  (let ((ol (make-overlay (org-element-property :begin elem)
-                                          ;; we have to be careful not to shadow internal bullets
-                                          (org-tree-get-element-text-end elem)
-                                          ))
-                        (c (current-column)))
-                    (overlay-put ol :step-type 'typewriter)
-                    (overlay-put ol :step-col  (- c 1))
-                    (overlay-put ol :step-delay     (if (eq (match-beginning 1) (match-end 1)) 0.01
-                                                      (string-to-number
-                                                       (buffer-substring (match-beginning 1) (match-end 1)))))
-                    (overlay-put ol :step-text      (buffer-substring (+ (org-element-property :contents-begin elem)
-                                                                         (- (match-end 0) (match-beginning 0)))
-                                                                      (- (org-tree-get-element-text-end elem) 1)))
-                    (add-to-list 'steps ol)))
+              (cond
+               ((looking-at "[[:space:]]*:tw[[:space:]]*\\([[:digit:].]*\\)[[:space:]]*:[[:space:]]?")
+                (let* ((start (org-element-property :begin (org-element-property :parent elem)))
+                       (end   (org-element-property :end elem))
+                       (ol        (make-overlay (match-beginning 0) end))
+                       (bullet-ol (make-overlay start (org-element-property :begin elem)))
+                       (tw-ol     (make-overlay (match-beginning 0) (match-end 0))))
+                  (overlay-put ol :step-type 'typewriter)
+                  (overlay-put ol :step-delay     (if (eq (match-beginning 1) (match-end 1)) 0.01
+                                                    (string-to-number
+                                                     (buffer-substring (match-beginning 1) (match-end 1)))))
+                  (overlay-put ol :step-text      (buffer-substring (+ (org-element-property :begin elem) (- (match-end 0) (match-beginning 0)))
+                                                                    (- end 1)))
 
-                 ('t (let ((ol (make-overlay (org-element-property :begin elem)
-                                             (org-element-property :end elem))))
-                       (overlay-put ol :step-type 'appear)
-                       (add-to-list 'steps ol)))
+                  ;; hide bullet, let ol animation reveal it
+                  (overlay-put bullet-ol :step-type 'conceal)
 
-                 )))
+                  ;; we keep bullet-ol on ol so we could reveal it during animation without extra keypresses
+                  (overlay-put ol :bullet-ol bullet-ol)
+
+                  ;; hide :tw: directive
+                  (overlay-put tw-ol :step-type 'conceal)
+
+                  (add-to-list 'steps tw-ol)
+                  (add-to-list 'steps bullet-ol)
+                  (add-to-list 'steps ol)))
+
+               ((looking-at "[[:space:]]*\\(:a:[[:space:]]?\\)")
+                (let* ((pelem (org-element-property :parent elem))
+                       (ol (make-overlay (org-element-property :begin pelem)
+                                         (org-element-property :end pelem)))
+                       (ap (make-overlay (match-beginning 1) (match-end 1))))
+
+                  (overlay-put ol :step-type 'appear)
+                  (overlay-put ap :step-type 'conceal)
+                  (add-to-list 'steps ap)
+                  (add-to-list 'steps ol)))
+
+               ((looking-at "[[:space:]]*\\(:c:[[:space:]]?\\)")
+                (let* ((pelem (org-element-property :parent elem))
+                       (ol (make-overlay (org-element-property :begin pelem)
+                                         (org-element-property :end pelem)))
+                       (c (make-overlay (match-beginning 1) (match-end 1))))
+                  (overlay-put ol :step-type 'conceal)
+                  (overlay-put c :step-type 'conceal)
+                  (add-to-list 'steps c)
+                  (add-to-list 'steps ol)))
+               ))
           (setq cont nil)))
       (reverse steps))))
 
@@ -160,33 +192,35 @@ meaning without the children.."
           (hide-steps ,name)))
 
 (defun hide-steps (&optional steps) (dolist (i (or steps (get-active-steps))) (overlay-put i 'invisible t)))
+
 (defun reveal-steps (&optional steps)
   (dolist (i (or steps (get-active-steps)))
-    ;;(read-key-sequence "")
-    (org-demo-block)
-    ;;(overlay-put i 'invisible nil)
     (let ((type (overlay-get i :step-type)))
       (cond
-       ((eq type 'appear)     (progn (overlay-put i 'invisible nil)
-                                     (message "yeah")))
+       ((eq type 'show-now)   (progn
+                                (overlay-put i 'invisible nil)))
+       ((eq type 'appear)     (progn
+                                (org-demo-block)
+                                (overlay-put i 'invisible nil)))
        ((eq type 'typewriter)
         (let* ((step-text (overlay-get i :step-text))
                (step-col  (overlay-get i :step-col))
                (step-delay (overlay-get i :step-delay))
-               (prefix    (concat (make-string step-col ?\s) "+ "))
-               (prefix-len (length prefix))
-               (display-text (concat prefix step-text "\n"))
+               (display-text (concat step-text "\n"))
                (l (length step-text))
                (animation nil))
-          ;;(message "animating")
+          (org-demo-block)
+
+          ;; Show the bullet
+          (overlay-put (overlay-get i :bullet-ol) 'invisible nil)
+
           ;; speed optimization:
           ;; prepare all strings before displaying:
           (dotimes (q (+ 1 l))
-            (add-to-list 'animation (substring display-text 0 (+ prefix-len q 1))))
+            (add-to-list 'animation (substring display-text 0 (+ q 1))))
 
           (overlay-put i 'invisible nil)
           (dolist (frame (reverse animation))
-            ;;(message "   frame ")
             (overlay-put i 'display frame)
             (sit-for step-delay 't)
             )))))))
