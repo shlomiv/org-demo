@@ -15,10 +15,10 @@
 
 (defun org-demo-start ()
 
-  (set-face-attribute 'org-table nil :inherit 'fixed-pitch :height .9 :width 'normal :scale 6)
+  (set-face-attribute 'org-table nil :inherit 'fixed-pitch :height .9 :width 'normal)
   (setq org-tree-slide-breadcrumbs nil)
   (fringe-mode '(0 . 0))
-  (setq cursor-type nil)
+  ;;(setq cursor-type nil)
   (if (fboundp 'flyspell-mode)
       (flyspell-mode -1))
   (variable-pitch-mode 1))
@@ -129,16 +129,15 @@ meaning without the children.."
             (let ((elem (org-element-at-point)))
               (when (string-prefix-p "+" (org-element-property :bullet elem))
                 (cond
-                 ((looking-at "[[:space:]]*:tw[[:space:]]*\\([[:digit:].]*\\):")
+                 ((looking-at "[[:space:]]*:tw[[:space:]]*\\([[:digit:].]*\\)[[:space:]]*:")
                   (let ((ol (make-overlay (org-element-property :begin elem)
-                                          (org-element-property :end elem)
-                                          ;;(org-tree-get-element-text-end elem)
+                                          ;; we have to be careful not to shadow internal bullets
+                                          (org-tree-get-element-text-end elem)
                                           ))
                         (c (current-column)))
                     (overlay-put ol :step-type 'typewriter)
                     (overlay-put ol :step-col  (- c 1))
-                    (overlay-put ol :step-delay     (if (eq (match-beginning 1) (match-end 1))
-                                                        0.01
+                    (overlay-put ol :step-delay     (if (eq (match-beginning 1) (match-end 1)) 0.01
                                                       (string-to-number
                                                        (buffer-substring (match-beginning 1) (match-end 1)))))
                     (overlay-put ol :step-text      (buffer-substring (+ (org-element-property :contents-begin elem)
@@ -147,22 +146,12 @@ meaning without the children.."
                     (add-to-list 'steps ol)))
 
                  ('t (let ((ol (make-overlay (org-element-property :begin elem)
-                                             (org-element-property :end elem)
-                                             ;;(org-tree-get-element-text-end elem)
-                                             )))
+                                             (org-element-property :end elem))))
                        (overlay-put ol :step-type 'appear)
                        (add-to-list 'steps ol)))
 
                  )))
           (setq cont nil)))
-
-
-      (comment (while (and (search-forward " +" nil 't)
-                           (eq cur-outline-level (org-outline-level)))
-                 (let ((elem (org-element-at-point)))
-                   (when (string-prefix-p "+ " (org-element-property :bullet elem))
-                     (add-to-list 'steps (make-overlay (org-element-property :begin elem)
-                                                       (org-element-property :end elem)))))))
       (reverse steps))))
 
 (defmacro init-stepper (name)
@@ -206,10 +195,9 @@ meaning without the children.."
 
 ;; general stuff
 (defun end-of-heading ()
-  (goto-char (point-min))
   (let ((cur-outline-level (org-outline-level)))
-    (goto-char (point-max))
-    (while (< cur-outline-level (org-outline-level))
+    (outline-next-heading)
+    (when (< cur-outline-level (org-outline-level))
       (forward-line -1))
     (recenter -1)))
 
