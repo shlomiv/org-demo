@@ -19,17 +19,8 @@
 * _Slide 1_
   #+BEGIN_SRC emacs-lisp :control enter :results none
     (embed-org-latex)
-    (init-stepper steps)
   #+END_SRC
 
-  #+BEGIN_SRC emacs-lisp :control flow :results none
-      (end-of-heading)
-      (reveal-steps steps)
-  #+END_SRC
-
-  #+BEGIN_SRC emacs-lisp :control cleanup :results none
-    (cleanup-steps steps)
-  #+END_SRC
   Press any key to see the bullets
     - :a: Like this one
       1) :tw: Press C-> to move to next slide when bullets are finished
@@ -39,19 +30,14 @@
 
   #+BEGIN_SRC emacs-lisp :control enter :results none
     (embed-org-latex)
-    (init-stepper steps)
+    (org-demo-dont-autostep-current-slide)
   #+END_SRC
 
-  #+BEGIN_SRC emacs-lisp :control cleanup :results none
-    (cleanup-steps steps)
-  #+END_SRC
+ #+BEGIN_SRC emacs-lisp :control flow :results none
+   (reveal-steps steps)
+ #+END_SRC
 
   $3+4=7$
-
-  #+BEGIN_SRC elisp :control flow :results none
-    (end-of-heading)
-    (reveal-steps steps)
-  #+END_SRC
 
    + :a: Tell me something
      + DO you

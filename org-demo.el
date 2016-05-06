@@ -54,9 +54,8 @@ e.g.:
   (set-window-configuration org-demo--window-configuration)
   )
 
-
-
 (defun org-demo-finish ()
+  (interactive)
   (cleanup-steps)
   (setq cursor-type t)
   (when (fboundp 'flyspell-mode)
@@ -66,7 +65,6 @@ e.g.:
   ;; finish running inside org-tree-slide and terminate it
   (run-with-timer 0 nil 'org-demo-cleanup)
   )
-
 
 (defun find-overlays-specifying (prop)
   (let ((overlays (overlays-in (point-min) (point-max)))
@@ -263,19 +261,19 @@ This function prepares the slide by placing overlays at certain points
 (defun org-demo-dont-autostep-current-slide ()
   (setq org-demo--dont-autostep 't))
 
-(setq org-tree-slide-on-slide-enter   nil)
-(setq org-tree-slide-on-slide-flow    nil)
-(setq org-tree-slide-on-slide-cleanup nil)
-(add-hook 'org-tree-slide-on-slide-enter  '(lambda()
+(setq org-tree-slide--on-slide-enter   nil)
+(setq org-tree-slide--on-slide-flow    nil)
+(setq org-tree-slide--on-slide-cleanup nil)
+(add-hook 'org-tree-slide--on-slide-enter  '(lambda()
                                              (setq org-demo--dont-autostep nil)
-                                             (init-stepper  steps)
+                                             (init-stepper steps)
                                              (end-of-heading)))
-(add-hook 'org-tree-slide-on-slide-flow   '(lambda()
+(add-hook 'org-tree-slide--on-slide-flow   '(lambda()
                                              (end-of-heading)
                                              (when (not org-demo--dont-autostep)
-                                               (reveal-steps  steps))
+                                               (reveal-steps steps))
                                              ))
-(add-hook 'org-tree-slide-on-slide-cleanup'(lambda()
+(add-hook 'org-tree-slide--on-slide-cleanup'(lambda()
                                              (cleanup-steps steps)))
 
 (provide 'org-demo)
