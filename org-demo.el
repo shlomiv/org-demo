@@ -1,6 +1,9 @@
 (require 'org-element)
 ;;(require 'org-tree-slide)
 
+(defvar org-demo--old-mode-line nil)
+(make-variable-buffer-local 'org-demo--old-mode-line)
+
 (defvar org-demo--original-buffer)
 (defvar org-demo--presentation-buffer)
 (defvar org-demo--window-configuration)
@@ -28,6 +31,8 @@ e.g.:
  #+END_SRC
 ")
 
+(defvar org-demo--org-table-face)
+
 (defun org-demo-showtime ()
   (interactive)
   (setq org-demo--window-configuration (current-window-configuration))
@@ -37,10 +42,16 @@ e.g.:
   (org-tree-slide-mode))
 
 (defun org-demo-start ()
+  (local-set-key (kbd "q") 'org-demo-finish)
+  (setq org-demo--org-table-face (list :inherit (face-attribute 'org-table :inherit)
+                                       :height (face-attribute 'org-table :height)
+                                       :width (face-attribute 'org-table :width)))
   (set-face-attribute 'org-table nil :inherit 'fixed-pitch :height .9 :width 'normal)
   (setq org-tree-slide-breadcrumbs nil)
+  (org-demo-hide-mode-line)
+  (whitespace-mode -1)
   (fringe-mode '(0 . 0))
-  ;;(setq cursor-type nil)
+  (setq cursor-type nil)
   (if (fboundp 'flyspell-mode)
       (flyspell-mode -1))
   (variable-pitch-mode 1))
@@ -58,10 +69,14 @@ e.g.:
   (interactive)
   (cleanup-steps)
   (setq cursor-type t)
+  (org-demo-show-mode-line)
+  ;;(restore-table-face)
+  (apply 'set-face-attribute 'org-table nil org-demo--org-table-face)
   (when (fboundp 'flyspell-mode)
     (flyspell-mode t))
   (variable-pitch-mode nil)
   (text-scale-set 0)
+  (local-unset-key (kbd "q"))
   ;; finish running inside org-tree-slide and terminate it
   (run-with-timer 0 nil 'org-demo-cleanup)
   )
@@ -78,6 +93,8 @@ e.g.:
 
 (defun get-active-steps ()
   (reverse (find-overlays-specifying :step-type)))
+
+(save-window-excursion)
 
 (defmacro org-demo-with-current-window (&rest body)
   `(let ((b (current-buffer)))
@@ -111,13 +128,12 @@ e.g.:
   (overlay-put org-demo-title-page-ol 'after-string " ")
   (overlay-put org-demo-title-page-ol 'invisible 't))
 
+(defun update-org-latex-fragment-scale ()
+  (let ((text-scale-factor (expt text-scale-mode-step text-scale-mode-amount)))
+    (plist-put org-format-latex-options :scale (* 1.5 text-scale-factor))))
 
 (defun org-demo-start-presenting (&optional SIZE)
   (when org-demo-title-page-ol (delete-overlay org-demo-title-page-ol))
-
-  (defun update-org-latex-fragment-scale ()
-    (let ((text-scale-factor (expt text-scale-mode-step text-scale-mode-amount)))
-      (plist-put org-format-latex-options :scale (* 1.5 text-scale-factor))))
 
   (add-hook 'text-scale-mode-hook 'update-org-latex-fragment-scale)
   (add-hook 'org-mode-hook 'org-preview-latex-fragment)
@@ -146,8 +162,9 @@ meaning without the children.."
 This function prepares the slide by placing overlays at certain points
 "
   (save-excursion
-    ;;(outline-back-to-heading) ;; wierd "Before first heading" error
-    (goto-char (point-min))
+    ;;(org-with-limited-levels (outline-back-to-heading))
+    (outline-back-to-heading) ;; wierd "Before first heading" error
+    ;;(goto-char (point-min))
     (forward-line)
     (let ((cur-outline-level (org-outline-level))
           (steps '())
@@ -271,9 +288,22 @@ This function prepares the slide by placing overlays at certain points
 (add-hook 'org-tree-slide--on-slide-flow   '(lambda()
                                              (end-of-heading)
                                              (when (not org-demo--dont-autostep)
-                                               (reveal-steps steps))
-                                             ))
-(add-hook 'org-tree-slide--on-slide-cleanup'(lambda()
-                                             (cleanup-steps steps)))
+                                               (reveal-steps steps))))
+(add-hook 'org-tree-slide--on-slide-cleanup'(lambda() (cleanup-steps steps)))
+
+
+(defun org-demo-hide-mode-line ()
+  "Hide mode line for a particular buffer."
+  (interactive)
+  (when mode-line-format
+    (setq org-demo--old-mode-line mode-line-format)
+    (setq mode-line-format nil)))
+
+(defun org-demo-show-mode-line ()
+  "Show mode line for a particular buffer, if it was previously hidden with 'org-demo--hide-mode-line."
+  (interactive)
+  (if org-demo--old-mode-line
+      (setq mode-line-format org-demo--old-mode-line)))
+
 
 (provide 'org-demo)
