@@ -292,6 +292,28 @@ This function prepares the slide by placing overlays at certain points
 (add-hook 'org-tree-slide--on-slide-cleanup'(lambda() (cleanup-steps steps)))
 
 
+(defun org-demo-make-side-window (&optional side)
+  "Splits the window horizontally and puts point on right side window.  SIDE is either 'below or 'side (for the right side)."
+  (when side
+    (if (eq side 'below)
+        (split-window-vertically)
+      (split-window-horizontally)))
+  (other-window 1))
+
+(defun org-demo-load-file (file &optional side size)
+  "Splits window and load FILE on the right side of the screen.  If SIDE is non-nil, the source code file is place in a window either 'below or to the 'side.  The SIZE can be used to scale the text font, which defaults to 1 step larger.  This function is called with source code since the mode line is still shown."
+  (if side
+      (org-demo-make-side-window side))
+  (find-file file)
+  (if size (text-scale-set size)
+    (text-scale-set 1)))
+
+(defun org-demo-show-image (file &optional side)
+  "Load FILE as image (or any other special file) replacing the current buffer.  If SIDE is non-nil, the image is shown in another window, either 'below or to the 'side."
+  (org-demo-load-file file side)
+  (fringe-mode '(0 . 0))
+  (org-demo-hide-mode-line))
+
 (defun org-demo-hide-mode-line ()
   "Hide mode line for a particular buffer."
   (interactive)
@@ -305,5 +327,40 @@ This function prepares the slide by placing overlays at certain points
   (if org-demo--old-mode-line
       (setq mode-line-format org-demo--old-mode-line)))
 
+(defun org-demo-load-fancy-file (file type line1 line2 &optional side size)
+  "Load FILE and use fancy narrow to highlight part of the buffer.  If TYPE is 'char, LINE1 and LINE2 are position in buffer, otherwise LINE1 and LINE2 are start and ending lines to highlight.  If SIDE is non-nil, the buffer is placed in a new side window, either 'below or to the 'side, and SIZE is the text scale, which defaults to 1."
+  (org-demo-load-file file side size)
 
+  ; If fancy-narrow hasn't been installed, this behaves
+  ; just like demo-it-load-file
+  (when (fboundp 'fancy-narrow-to-region)
+    (let ((start line1)
+          (end line2))
+      (when (fancy-narrow-active-p) (fancy-widen))
+      (unless (eq type 'char)
+        (goto-char (point-min)) (forward-line (1- line1))  ;; Heh: (goto-line line1)
+        (setq start (point))
+        (goto-char (point-min)) (forward-line line2)
+        (setq end (point)))
+      (fancy-narrow-to-region start end)
+      (beginning-of-buffer)
+      (recenter-top-bottom 2))))
+
+(defun org-demo-update-fancy-file (file type line1 line2 &optional side size)
+  "Load FILE and use fancy narrow to highlight part of the buffer.  If TYPE is 'char, LINE1 and LINE2 are position in buffer, otherwise LINE1 and LINE2 are start and ending lines to highlight.  If SIDE is non-nil, the buffer is placed in a new side window, either 'below or to the 'side, and SIZE is the text scale, which defaults to 1."
+  ;;(switch-to-buffer (find-buffer-visiting file))
+  (select-window (get-buffer-window (find-buffer-visiting file)))
+
+                                        ; If fancy-narrow hasn't been installed, this behaves
+                                        ; just like demo-it-load-file
+  (when (fboundp 'fancy-narrow-to-region)
+    (let ((start line1)
+          (end line2))
+      (when (fancy-narrow-active-p) (fancy-widen))
+      (unless (eq type 'char)
+        (goto-char (point-min)) (forward-line (1- line1))  ;; Heh: (goto-line line1)
+        (setq start (point))
+        (goto-char (point-min)) (forward-line line2)
+        (setq end (point)))
+      (fancy-narrow-to-region start end))))
 (provide 'org-demo)
